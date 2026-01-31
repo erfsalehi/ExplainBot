@@ -65,6 +65,12 @@ function escapeRegExp(str) {
   return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
+function normalizeForMention(str) {
+  return (str || '')
+    .normalize('NFKC')
+    .replace(/[\u200B-\u200F\u202A-\u202E\u2060-\u206F\uFEFF]/g, '');
+}
+
 async function ensureBotInfo(ctx) {
   if (BOT_USERNAME && (bot.botInfo?.username || bot.context?.botInfo?.username)) return;
   try {
@@ -81,23 +87,28 @@ async function ensureBotInfo(ctx) {
 
 function isMentionedInText(text, username) {
   if (!text || !username) return false;
-  return new RegExp(`@${escapeRegExp(username)}\\b`, 'i').test(text);
+  const t = normalizeForMention(text).toLowerCase();
+  const u = normalizeForMention(username).toLowerCase();
+  return t.includes(`@${u}`);
 }
 
 function stripMention(text, username) {
   if (!text || !username) return text || '';
-  return text.replace(new RegExp(`@${escapeRegExp(username)}\\b`, 'ig'), '').trim();
+  const u = escapeRegExp(normalizeForMention(username));
+  return normalizeForMention(text).replace(new RegExp(`@${u}`, 'ig'), '').trim();
 }
 
 function isMentionedViaEntities(message, username, botId) {
   const text = message?.text || message?.caption || '';
   const entities = message?.entities || message?.caption_entities || [];
   if (!entities.length || !text || (!username && !botId)) return false;
-  const lowered = username.toLowerCase();
+  const lowered = normalizeForMention(username).toLowerCase();
   for (const entity of entities) {
     if (entity.type === 'mention' && username) {
-      const mentionText = text.slice(entity.offset, entity.offset + entity.length);
-      if (mentionText.toLowerCase() === `@${lowered}`) return true;
+      const mentionText = normalizeForMention(text.slice(entity.offset, entity.offset + entity.length))
+        .replace(/[^@a-z0-9_]/gi, '')
+        .toLowerCase();
+      if (mentionText === `@${lowered}`) return true;
     }
     if (entity.type === 'text_mention' && botId && entity.user?.id === botId) return true;
   }
