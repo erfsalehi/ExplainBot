@@ -45,27 +45,53 @@ app.listen(PORT, () => {
   console.log(`Server listening on port ${PORT}`);
 });
 
-// Casual, everyday language personality prompt
-const SYSTEM_PROMPT = `You're that brutally honest friend who tells it like it is - no sugarcoating, no corporate speak, just real talk. 
+// Sarcastic, humorous personality that roasts dumb questions
+const SYSTEM_PROMPT = `You're that brutally honest friend who tells it like it is - no sugarcoating, no corporate speak, just real talk with a heavy dose of sarcasm and humor.
 
-When someone asks you to explain something, break it down like you're chatting with a buddy over coffee. Use everyday words, maybe throw in some slang if it fits. Don't be afraid to call out BS when you see it.
+When someone asks you to explain something, break it down like you're chatting with a buddy over coffee, but don't hesitate to roast them if the question is dumb. Use everyday words, throw in some slang, and definitely call out BS when you see it.
 
-If something's stupid, say it's stupid. If someone's overcomplicating things, tell them to chill. You're not here to impress anyone with big words - you're here to give straight answers that actually make sense.
+If something's stupid, say it's stupid. If someone's overcomplicating things, tell them to chill and stop being extra. You're not here to impress anyone with big words - you're here to give straight answers that actually make sense, with a side of "are you serious right now?"
 
-Keep it casual, keep it real, and don't hold back. If the truth hurts, well, that's not your problem.`;
+Keep it casual, keep it real, and don't hold back. If the truth hurts, well, that's not your problem. And if someone asks a genuinely dumb question, roast them first, then give the answer. They'll learn.`;
 
 bot.start((ctx) => ctx.reply('Yo, I\'m here! Mention me in a message and I\'ll give it to you straight - no BS, no sugarcoating. Let\'s go!'));
 
 bot.help((ctx) => ctx.reply('Just mention me in a group chat or reply to my messages. I\'ll tell you what\'s really up, no filter needed.'));
+
+// Add this to get bot info and log it
+bot.telegram.getMe().then((botInfo) => {
+  console.log(`Bot started: @${botInfo.username}`);
+}).catch((err) => {
+  console.error('Failed to get bot info:', err);
+});
 
 bot.on('message', async (ctx) => {
   try {
     const message = ctx.message;
     if (!message || !message.text) return;
 
-    const botUsername = ctx.botInfo.username;
-    const isMentioned = message.text.includes(`@${botUsername}`);
-    const isReplyToBot = message.reply_to_message && message.reply_to_message.from.id === ctx.botInfo.id;
+    // Get bot username safely
+    let botUsername = '';
+    try {
+      botUsername = ctx.botInfo?.username || '';
+    } catch (e) {
+      console.log('Could not get bot username, trying alternative method');
+      // Fallback: try to extract from bot token
+      const tokenParts = TG_TOKEN.split(':');
+      if (tokenParts[0]) {
+        const botInfo = await ctx.telegram.getMe();
+        botUsername = botInfo.username;
+      }
+    }
+
+    console.log(`Processing message in ${ctx.chat.type} chat`);
+    console.log(`Message text: "${message.text}"`);
+    console.log(`Bot username: @${botUsername}`);
+
+    const isMentioned = botUsername && message.text.includes(`@${botUsername}`);
+    const isReplyToBot = message.reply_to_message && message.reply_to_message.from?.id === ctx.botInfo?.id;
+
+    console.log(`Is mentioned: ${isMentioned}, Is reply to bot: ${isReplyToBot}, Chat type: ${ctx.chat.type}`);
 
     if (isMentioned || isReplyToBot || ctx.chat.type === 'private') {
       // Clean up the text by removing the bot mention
