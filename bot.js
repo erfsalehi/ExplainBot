@@ -1,5 +1,5 @@
 import { Telegraf } from 'telegraf';
-import OpenAI from "openai";
+import { OpenRouter } from "@openrouter/sdk";
 import { HttpsProxyAgent } from 'https-proxy-agent';
 import express from 'express';
 import 'dotenv/config';
@@ -28,14 +28,8 @@ const bot = new Telegraf(TG_TOKEN, {
   }
 });
 
-// OpenAI client configured for OpenRouter
-const openai = new OpenAI({
-  baseURL: "https://openrouter.ai/api/v1",
+const openrouter = new OpenRouter({
   apiKey: OR_KEY,
-  defaultHeaders: {
-    "HTTP-Referer": "https://github.com/erfsalehi/ExplainBot",
-    "X-Title": "Blunt Explain Bot",
-  }
 });
 
 // Express for Webhooks & Health Checks
@@ -92,8 +86,8 @@ bot.on('message', async (ctx) => {
         { role: "user", content: `${userQuery}${contextMessage}` }
       ];
 
-      const stream = await openai.chat.completions.create({
-        model: "deepseek/deepseek-r1:free",
+      const stream = await openrouter.chat.send({
+        model: "deepseek/deepseek-r1-0528:free",
         messages: messages,
         stream: true
       });
@@ -150,10 +144,6 @@ bot.on('message', async (ctx) => {
     }
   } catch (error) {
     console.error('Error handling message:', error);
-    // Log the specific error details for debugging in Render
-    if (error.response) {
-      console.error('OpenRouter Error Response:', JSON.stringify(error.response.data, null, 2));
-    }
     ctx.reply('Something went wrong. Even I have my limits.').catch(() => {});
   }
 });
