@@ -46,7 +46,16 @@ A Telegram bot that provides blunt, honest, and cynical answers using OpenRouter
    - `TELEGRAM_BOT_TOKEN`: Your token.
    - `OPENROUTER_API_KEY`: Your key.
    - `WEBHOOK_DOMAIN`: The URL Render gives you (e.g., `https://explain-bot.onrender.com`).
+   - `BOT_USERNAME`: Your bot username without `@` (e.g., `ExplainUsiBot`).
 5. **Why Webhooks?**: By using webhooks, Telegram will "wake up" your bot whenever a new message arrives, even if Render has put it to sleep due to inactivity.
+
+## Keeping It Awake (Free Tier)
+
+Free hosting can go idle. If the bot feels “dead”, open this in a browser to wake it up:
+
+- `https://YOUR-SERVICE.onrender.com/health` (should return `OK`)
+
+If you want fewer cold-start delays, you can use an uptime monitor to ping `/health` every few minutes.
 
 ## Local Development (Polling)
 If you just want to run it locally and don't have network blocks:
