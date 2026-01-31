@@ -7,6 +7,7 @@ import 'dotenv/config';
 const TG_TOKEN = process.env.TELEGRAM_BOT_TOKEN?.trim();
 const OR_KEY = process.env.OPENROUTER_API_KEY?.trim();
 let BOT_USERNAME = process.env.BOT_USERNAME?.trim() || '';
+let BOT_ID = null;
 
 if (!TG_TOKEN || !OR_KEY) {
   console.error('Error: TELEGRAM_BOT_TOKEN and OPENROUTER_API_KEY must be set in .env');
@@ -33,7 +34,7 @@ const openrouter = new OpenRouter({
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const WEBHOOK_DOMAIN = process.env.WEBHOOK_DOMAIN; // e.g., https://your-app.onrender.com
+const WEBHOOK_DOMAIN = process.env.WEBHOOK_DOMAIN;
 
 app.get('/', (req, res) => res.send('Bot is alive!'));
 app.get('/health', (req, res) => res.status(200).send('OK'));
@@ -58,6 +59,8 @@ bot.start((ctx) => ctx.reply('Yo, I\'m here! Mention me in a message and I\'ll g
 
 bot.help((ctx) => ctx.reply('Just mention me in a group chat or reply to my messages. I\'ll tell you what\'s really up, no filter needed.'));
 
+bot.command('ping', (ctx) => ctx.reply('pong'));
+
 function escapeRegExp(str) {
   return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
@@ -67,10 +70,12 @@ async function ensureBotInfo(ctx) {
   try {
     const botInfo = await bot.telegram.getMe();
     BOT_USERNAME = BOT_USERNAME || botInfo.username || '';
+    BOT_ID = botInfo.id || BOT_ID;
     bot.botInfo = botInfo;
     bot.context.botInfo = botInfo;
   } catch (err) {
     if (!BOT_USERNAME && ctx?.botInfo?.username) BOT_USERNAME = ctx.botInfo.username;
+    if (!BOT_ID && ctx?.botInfo?.id) BOT_ID = ctx.botInfo.id;
   }
 }
 
@@ -84,30 +89,35 @@ function stripMention(text, username) {
   return text.replace(new RegExp(`@${escapeRegExp(username)}\\b`, 'ig'), '').trim();
 }
 
-function isMentionedViaEntities(message, username) {
-  if (!message?.entities?.length || !message.text || !username) return false;
+function isMentionedViaEntities(message, username, botId) {
+  const text = message?.text || message?.caption || '';
+  const entities = message?.entities || message?.caption_entities || [];
+  if (!entities.length || !text || (!username && !botId)) return false;
   const lowered = username.toLowerCase();
-  for (const entity of message.entities) {
-    if (entity.type !== 'mention') continue;
-    const mentionText = message.text.slice(entity.offset, entity.offset + entity.length);
-    if (mentionText.toLowerCase() === `@${lowered}`) return true;
+  for (const entity of entities) {
+    if (entity.type === 'mention' && username) {
+      const mentionText = text.slice(entity.offset, entity.offset + entity.length);
+      if (mentionText.toLowerCase() === `@${lowered}`) return true;
+    }
+    if (entity.type === 'text_mention' && botId && entity.user?.id === botId) return true;
   }
   return false;
 }
 
-bot.on('message', async (ctx) => {
+async function handleIncoming(ctx, message) {
   try {
-    const message = ctx.message;
-    if (!message || !message.text) return;
+    const text = message?.text || message?.caption || '';
+    if (!text) return;
 
     await ensureBotInfo(ctx);
 
     const botUsername = BOT_USERNAME || ctx.botInfo?.username || '';
-    const isMentioned = isMentionedViaEntities(message, botUsername) || isMentionedInText(message.text, botUsername);
-    const isReplyToBot = message.reply_to_message && message.reply_to_message.from?.id === bot.botInfo?.id;
+    const botId = BOT_ID || bot.botInfo?.id || ctx.botInfo?.id || null;
+    const isMentioned = isMentionedViaEntities(message, botUsername, botId) || isMentionedInText(text, botUsername);
+    const isReplyToBot = message.reply_to_message && message.reply_to_message.from?.id === botId;
 
     if (isMentioned || isReplyToBot || ctx.chat.type === 'private') {
-      let userQuery = stripMention(message.text, botUsername);
+      let userQuery = stripMention(text, botUsername);
       
       let contextMessage = '';
       if (message.reply_to_message && !isReplyToBot) {
@@ -141,13 +151,11 @@ bot.on('message', async (ctx) => {
         if (content) {
           fullResponse += content;
           
-          // Telegram message limit is 4096 characters
           if (fullResponse.length > 4000) {
             fullResponse = fullResponse.substring(0, 4000) + '... [Truncated due to length]';
             break; 
           }
 
-          // Update message every 2.5 seconds to avoid rate limits
           if (Date.now() - lastUpdate > 2500 && fullResponse.trim()) {
             try {
               await ctx.telegram.editMessageText(
@@ -158,13 +166,11 @@ bot.on('message', async (ctx) => {
               );
               lastUpdate = Date.now();
             } catch (e) {
-              // Ignore edit errors
             }
           }
         }
       }
 
-      // Final update
       if (fullResponse.trim()) {
         await ctx.telegram.editMessageText(
           ctx.chat.id,
@@ -185,6 +191,22 @@ bot.on('message', async (ctx) => {
     console.error('Error handling message:', error);
     ctx.reply('Something went wrong. Even I have my limits.').catch(() => {});
   }
+}
+
+bot.on('message', async (ctx) => {
+  await handleIncoming(ctx, ctx.message);
+});
+
+bot.on('edited_message', async (ctx) => {
+  await handleIncoming(ctx, ctx.editedMessage);
+});
+
+bot.on('channel_post', async (ctx) => {
+  await handleIncoming(ctx, ctx.channelPost);
+});
+
+bot.on('edited_channel_post', async (ctx) => {
+  await handleIncoming(ctx, ctx.editedChannelPost);
 });
 
 if (WEBHOOK_DOMAIN) {
