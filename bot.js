@@ -39,6 +39,11 @@ app.listen(PORT, () => {
 
 const openrouter = new OpenRouter({
   apiKey: process.env.OPENROUTER_API_KEY,
+  // Optional headers for OpenRouter
+  headers: {
+    "HTTP-Referer": "https://github.com/erfsalehi/ExplainBot", // Optional, for including your app on openrouter.ai rankings.
+    "X-Title": "Blunt Explain Bot", // Optional. Shows in rankings on openrouter.ai.
+  }
 });
 
 // The "Grok-like" personality prompt
