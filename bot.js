@@ -4,16 +4,15 @@ import { HttpsProxyAgent } from 'https-proxy-agent';
 import express from 'express';
 import 'dotenv/config';
 
-// Trim keys to avoid whitespace issues
 const TG_TOKEN = process.env.TELEGRAM_BOT_TOKEN?.trim();
 const OR_KEY = process.env.OPENROUTER_API_KEY?.trim();
+let BOT_USERNAME = process.env.BOT_USERNAME?.trim() || '';
 
 if (!TG_TOKEN || !OR_KEY) {
   console.error('Error: TELEGRAM_BOT_TOKEN and OPENROUTER_API_KEY must be set in .env');
   process.exit(1);
 }
 
-// Proxy support (only for Telegram)
 const proxy = process.env.HTTPS_PROXY || process.env.HTTP_PROXY;
 let agent;
 if (proxy) {
@@ -32,7 +31,6 @@ const openrouter = new OpenRouter({
   apiKey: OR_KEY,
 });
 
-// Express for Webhooks & Health Checks
 const app = express();
 const PORT = process.env.PORT || 3000;
 const WEBHOOK_DOMAIN = process.env.WEBHOOK_DOMAIN; // e.g., https://your-app.onrender.com
@@ -40,71 +38,85 @@ const WEBHOOK_DOMAIN = process.env.WEBHOOK_DOMAIN; // e.g., https://your-app.onr
 app.get('/', (req, res) => res.send('Bot is alive!'));
 app.get('/health', (req, res) => res.status(200).send('OK'));
 
-// Start Express server regardless of mode so Render is happy
 app.listen(PORT, () => {
   console.log(`Server listening on port ${PORT}`);
 });
 
-// Sarcastic, humorous personality that roasts dumb questions
 const SYSTEM_PROMPT = `You're that brutally honest friend who tells it like it is - no sugarcoating, no corporate speak, just real talk with a heavy dose of sarcasm and humor.
 
 When someone asks you to explain something, break it down like you're chatting with a buddy over coffee, but don't hesitate to roast them if the question is dumb. Use everyday words, throw in some slang, and definitely call out BS when you see it.
 
 If something's stupid, say it's stupid. If someone's overcomplicating things, tell them to chill and stop being extra. You're not here to impress anyone with big words - you're here to give straight answers that actually make sense, with a side of "are you serious right now?"
 
-Keep it casual, keep it real, and don't hold back. If the truth hurts, well, that's not your problem. And if someone asks a genuinely dumb question, roast them first, then give the answer. They'll learn.`;
+Keep it casual, keep it real, and don't hold back. If the truth hurts, well, that's not your problem. And if someone asks a genuinely dumb question, roast them first, then give the answer.
+
+Language rule: ONLY reply in English or Persian (Farsi). No other languages. If the user writes in another language, reply in English.
+
+If the user's message is mostly Persian (Farsi), reply in Persian. Otherwise reply in English.`;
 
 bot.start((ctx) => ctx.reply('Yo, I\'m here! Mention me in a message and I\'ll give it to you straight - no BS, no sugarcoating. Let\'s go!'));
 
 bot.help((ctx) => ctx.reply('Just mention me in a group chat or reply to my messages. I\'ll tell you what\'s really up, no filter needed.'));
 
-// Add this to get bot info and log it
-bot.telegram.getMe().then((botInfo) => {
-  console.log(`Bot started: @${botInfo.username}`);
-}).catch((err) => {
-  console.error('Failed to get bot info:', err);
-});
+function escapeRegExp(str) {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+async function ensureBotInfo(ctx) {
+  if (BOT_USERNAME && (bot.botInfo?.username || bot.context?.botInfo?.username)) return;
+  try {
+    const botInfo = await bot.telegram.getMe();
+    BOT_USERNAME = BOT_USERNAME || botInfo.username || '';
+    bot.botInfo = botInfo;
+    bot.context.botInfo = botInfo;
+  } catch (err) {
+    if (!BOT_USERNAME && ctx?.botInfo?.username) BOT_USERNAME = ctx.botInfo.username;
+  }
+}
+
+function isMentionedInText(text, username) {
+  if (!text || !username) return false;
+  return new RegExp(`@${escapeRegExp(username)}\\b`, 'i').test(text);
+}
+
+function stripMention(text, username) {
+  if (!text || !username) return text || '';
+  return text.replace(new RegExp(`@${escapeRegExp(username)}\\b`, 'ig'), '').trim();
+}
+
+function isMentionedViaEntities(message, username) {
+  if (!message?.entities?.length || !message.text || !username) return false;
+  const lowered = username.toLowerCase();
+  for (const entity of message.entities) {
+    if (entity.type !== 'mention') continue;
+    const mentionText = message.text.slice(entity.offset, entity.offset + entity.length);
+    if (mentionText.toLowerCase() === `@${lowered}`) return true;
+  }
+  return false;
+}
 
 bot.on('message', async (ctx) => {
   try {
     const message = ctx.message;
     if (!message || !message.text) return;
 
-    // Get bot username safely
-    let botUsername = '';
-    try {
-      botUsername = ctx.botInfo?.username || '';
-    } catch (e) {
-      console.log('Could not get bot username, trying alternative method');
-      // Fallback: try to extract from bot token
-      const tokenParts = TG_TOKEN.split(':');
-      if (tokenParts[0]) {
-        const botInfo = await ctx.telegram.getMe();
-        botUsername = botInfo.username;
-      }
-    }
+    await ensureBotInfo(ctx);
 
-    console.log(`Processing message in ${ctx.chat.type} chat`);
-    console.log(`Message text: "${message.text}"`);
-    console.log(`Bot username: @${botUsername}`);
-
-    const isMentioned = botUsername && message.text.includes(`@${botUsername}`);
-    const isReplyToBot = message.reply_to_message && message.reply_to_message.from?.id === ctx.botInfo?.id;
-
-    console.log(`Is mentioned: ${isMentioned}, Is reply to bot: ${isReplyToBot}, Chat type: ${ctx.chat.type}`);
+    const botUsername = BOT_USERNAME || ctx.botInfo?.username || '';
+    const isMentioned = isMentionedViaEntities(message, botUsername) || isMentionedInText(message.text, botUsername);
+    const isReplyToBot = message.reply_to_message && message.reply_to_message.from?.id === bot.botInfo?.id;
 
     if (isMentioned || isReplyToBot || ctx.chat.type === 'private') {
-      // Clean up the text by removing the bot mention
-      let userQuery = message.text.replace(`@${botUsername}`, '').trim();
+      let userQuery = stripMention(message.text, botUsername);
       
-      // If it's a reply to another message (not the bot's message), 
-      // the user probably wants to summarize/explain that message.
       let contextMessage = '';
       if (message.reply_to_message && !isReplyToBot) {
         contextMessage = `\n\nContext from the message you are replying to:\n"${message.reply_to_message.text}"`;
       }
 
-      if (!userQuery && !contextMessage) return;
+      if (!userQuery && !contextMessage) {
+        return;
+      }
 
       await ctx.sendChatAction('typing');
 
