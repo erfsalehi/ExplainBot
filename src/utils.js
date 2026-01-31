@@ -7,6 +7,15 @@ export function escapeRegExp(str) {
     return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
+export function isMostlyPersian(text) {
+    if (!text) return false;
+    const t = String(text);
+    const letters = t.match(/[A-Za-z\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/g) || [];
+    if (letters.length === 0) return false;
+    const fa = letters.filter((ch) => /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/.test(ch)).length;
+    return fa / letters.length >= 0.35;
+}
+
 /**
  * Normalize text for mention comparison - removes zero-width chars and normalizes unicode
  */
@@ -14,6 +23,23 @@ export function normalizeForMention(str) {
     return (str || '')
         .normalize('NFKC')
         .replace(/[\u200B-\u200F\u202A-\u202E\u2060-\u206F\uFEFF]/g, '');
+}
+
+export function fixPersianHalfSpaces(text) {
+    const zwnj = '\u200C';
+    let t = String(text || '');
+    t = t.replace(/([\u0600-\u06FF])\s+([،؛:!?\)\]\}»])/g, '$1$2');
+    t = t.replace(/([\(\\[\\{«])\s+([\u0600-\u06FF])/g, '$1$2');
+    t = t.replace(/(^|[\s(«"'\[\{])((?:ن)?می)\s+([\u0600-\u06FF])/g, `$1$2${zwnj}$3`);
+    t = t.replace(/([\u0600-\u06FF])\s+(ها|های|هایی|تر|ترین|ام|ات|اش|مان|تان|شان)(?=$|[^\u0600-\u06FF])/g, `$1${zwnj}$2`);
+    t = t.replace(/ه\s+ی(?=$|[^\u0600-\u06FF])/g, `ه${zwnj}ی`);
+    return t;
+}
+
+export function formatAssistantOutput(text) {
+    if (!text) return text || '';
+    if (!isMostlyPersian(text)) return text;
+    return fixPersianHalfSpaces(text);
 }
 
 /**

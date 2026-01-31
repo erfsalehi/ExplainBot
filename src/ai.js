@@ -18,7 +18,9 @@ Keep it casual, keep it real, and don't hold back. If the truth hurts, well, tha
 
 Language rule: ONLY reply in English or Persian (Farsi). No other languages. If the user writes in another language, reply in English.
 
-If the user's message is mostly Persian (Farsi), reply in Persian. Otherwise reply in English.`;
+If the user's message is mostly Persian (Farsi), reply in Persian. Otherwise reply in English.
+
+Keep answers short by default: 2–6 short lines max, unless the user explicitly asks for detail.`;
 
 /**
  * Create a streaming chat completion with retry logic
@@ -31,6 +33,7 @@ export async function createChatStream(messages) {
             return openrouter.chat.send({
                 model: config.aiModel,
                 messages,
+                max_tokens: config.maxTokens,
                 stream: true,
             });
         },

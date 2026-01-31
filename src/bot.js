@@ -5,7 +5,7 @@ import { logger } from './logger.js';
 import { app, startServer } from './server.js';
 import { SYSTEM_PROMPT, createChatStream, processStream } from './ai.js';
 import { addMessage, clearConversation, getConversation } from './memory.js';
-import { isMentionedInText, isMentionedViaEntities, stripMention } from './utils.js';
+import { isMentionedInText, isMentionedViaEntities, stripMention, formatAssistantOutput } from './utils.js';
 
 export async function startBot() {
     validateConfig();
@@ -72,15 +72,16 @@ export async function startBot() {
             if (Date.now() - lastUpdate < 2500) return;
             if (!partial.trim()) return;
             try {
-                await ctx.telegram.editMessageText(ctx.chat.id, placeholder.message_id, null, partial + '...');
+                await ctx.telegram.editMessageText(ctx.chat.id, placeholder.message_id, null, formatAssistantOutput(partial) + '...');
                 lastUpdate = Date.now();
             } catch (e) {
             }
         });
 
-        addMessage(chatId, 'assistant', response);
+        const finalResponse = formatAssistantOutput(response);
+        addMessage(chatId, 'assistant', finalResponse);
 
-        const finalText = response.trim() ? response : 'Nothing to say.';
+        const finalText = finalResponse.trim() ? finalResponse : 'Nothing to say.';
         try {
             await ctx.telegram.editMessageText(ctx.chat.id, placeholder.message_id, null, finalText);
         } catch (e) {

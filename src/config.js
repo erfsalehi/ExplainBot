@@ -14,6 +14,7 @@ export const config = {
   
   // AI Configuration
   aiModel: process.env.AI_MODEL || 'tngtech/deepseek-r1t2-chimera:free',
+  maxTokens: parseInt(process.env.MAX_TOKENS || '450', 10),
   maxResponseLength: parseInt(process.env.MAX_RESPONSE_LENGTH || '4000', 10),
   
   // Retry configuration
