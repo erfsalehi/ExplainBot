@@ -32,6 +32,11 @@ const WEBHOOK_DOMAIN = process.env.WEBHOOK_DOMAIN; // e.g., https://your-app.onr
 app.get('/', (req, res) => res.send('Bot is alive!'));
 app.get('/health', (req, res) => res.status(200).send('OK'));
 
+// Start Express server regardless of mode so Render is happy
+app.listen(PORT, () => {
+  console.log(`Server listening on port ${PORT}`);
+});
+
 const openrouter = new OpenRouter({
   apiKey: process.env.OPENROUTER_API_KEY,
 });
@@ -143,12 +148,9 @@ if (WEBHOOK_DOMAIN) {
   const secretPath = `/telegraf/${bot.secretPathComponent()}`;
   app.use(bot.webhookCallback(secretPath));
   
-  app.listen(PORT, () => {
-    console.log(`Bot listening on port ${PORT}`);
-    bot.telegram.setWebhook(`${WEBHOOK_DOMAIN}${secretPath}`)
-      .then(() => console.log(`Webhook set to ${WEBHOOK_DOMAIN}${secretPath}`))
-      .catch((err) => console.error('Failed to set webhook:', err));
-  });
+  bot.telegram.setWebhook(`${WEBHOOK_DOMAIN}${secretPath}`)
+    .then(() => console.log(`Webhook set to ${WEBHOOK_DOMAIN}${secretPath}`))
+    .catch((err) => console.error('Failed to set webhook:', err));
 } else {
   bot.launch().then(() => {
     console.log('Bot is running in POLLING mode...');
