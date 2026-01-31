@@ -83,7 +83,7 @@ bot.on('message', async (ctx) => {
       ];
 
       const stream = await openrouter.chat.send({
-        model: "deepseek/deepseek-r1-0528:free",
+        model: "deepseek/deepseek-r1:free", // Using the more reliable free model name
         messages: messages,
         stream: true
       });
@@ -140,6 +140,10 @@ bot.on('message', async (ctx) => {
     }
   } catch (error) {
     console.error('Error handling message:', error);
+    // Log the specific error details for debugging in Render
+    if (error.response) {
+      console.error('OpenRouter Error Response:', JSON.stringify(error.response.data, null, 2));
+    }
     ctx.reply('Something went wrong. Even I have my limits.').catch(() => {});
   }
 });
