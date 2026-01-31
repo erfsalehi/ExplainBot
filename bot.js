@@ -87,7 +87,7 @@ bot.on('message', async (ctx) => {
       ];
 
       const stream = await openrouter.chat.send({
-        model: "deepseek/deepseek-r1-0528:free",
+        model: "tngtech/deepseek-r1t2-chimera:free",
         messages: messages,
         stream: true
       });
