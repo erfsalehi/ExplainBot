@@ -1,4 +1,26 @@
-node_modules
+# Dependencies
+node_modules/
+
+# Environment
 .env
-package-lock.json
+
+# OS files
 .DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Legacy test files (now consolidated in test.js)
+test-env.js
+test-new-model.js
+test-openai.js
+test-openrouter.js
+
+# Old bot file (now modularized in src/)
+bot.js

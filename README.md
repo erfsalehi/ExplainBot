@@ -1,61 +1,87 @@
-# Blunt Explain Bot (Grok-style)
+# ExplainBot - Blunt AI Telegram Bot
 
-A Telegram bot that provides blunt, honest, and cynical answers using OpenRouter's DeepSeek R1 model.
+A Telegram bot that provides brutally honest, sarcastic answers using OpenRouter AI. No sugarcoating, no corporate speak - just real talk.
 
 ## Features
 
-- **Blunt Personality**: Responds like Grok (direct, honest, cynical).
-- **Group Chat Support**: Mention the bot in a group to get an answer.
-- **Context Awareness**: Reply to a message and mention the bot to summarize or explain that specific message.
-- **Streaming Responses**: See the bot's response as it's being generated.
+- **Blunt Personality**: Responds with sarcasm and brutal honesty
+- **Group Chat Support**: Mention the bot in groups
+- **Context Awareness**: Reply to messages for summarization/explanation
+- **Conversation Memory**: Remembers recent chat history (configurable TTL)
+- **Streaming Responses**: See responses as they're generated
+- **Rate Limit Handling**: Automatic retry with exponential backoff
+- **Configurable Model**: Switch AI models via environment variable
 
-## Setup
+## Quick Start
 
-1. **Get a Telegram Bot Token**:
-   - Talk to [@BotFather](https://t.me/botfather) on Telegram.
-   - Create a new bot and get the token.
-   - **Important**: Use `/setprivacy` and set it to `DISABLED` if you want the bot to see all messages in groups, OR just mention the bot when you want a response.
+1. **Get tokens**:
+   - Telegram: Talk to [@BotFather](https://t.me/botfather)
+   - OpenRouter: Sign up at [OpenRouter.ai](https://openrouter.ai/)
 
-2. **Get an OpenRouter API Key**:
-   - Sign up at [OpenRouter.ai](https://openrouter.ai/).
-   - Create an API key.
-
-3. **Configure Environment Variables**:
-   - Create a `.env` file in the root directory (you can copy `.env.example`).
-   - Add your tokens:
-     ```env
-     TELEGRAM_BOT_TOKEN=your_telegram_bot_token_here
-     OPENROUTER_API_KEY=your_openrouter_api_key_here
-     ```
-
-4. **Install Dependencies**:
+2. **Configure**:
    ```bash
-   npm install
+   cp .env.example .env
+   # Edit .env with your tokens
    ```
 
-## Hosting on Render (Free Tier)
+3. **Run**:
+   ```bash
+   npm install
+   npm start
+   ```
 
-1. **Create a GitHub Repository**: Push your code to a new private repository on GitHub.
-2. **Sign up for [Render](https://render.com/)**.
-3. **Create a New Web Service**:
-   - Connect your GitHub repo.
-   - **Environment**: `Node`
-   - **Build Command**: `npm install`
-   - **Start Command**: `npm start`
-4. **Configure Environment Variables** in Render's dashboard:
-   - `TELEGRAM_BOT_TOKEN`: Your token.
-   - `OPENROUTER_API_KEY`: Your key.
-   - `WEBHOOK_DOMAIN`: The URL Render gives you (e.g., `https://explain-bot.onrender.com`).
-5. **Why Webhooks?**: By using webhooks, Telegram will "wake up" your bot whenever a new message arrives, even if Render has put it to sleep due to inactivity.
+## Configuration
 
-## Local Development (Polling)
-If you just want to run it locally and don't have network blocks:
-- Leave `WEBHOOK_DOMAIN` empty in your `.env`.
-- Run `npm start`.
+See `.env.example` for all options. Key settings:
 
-## Usage
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `TELEGRAM_BOT_TOKEN` | Bot token from BotFather | Required |
+| `OPENROUTER_API_KEY` | OpenRouter API key | Required |
+| `AI_MODEL` | AI model to use | `tngtech/deepseek-r1t2-chimera:free` |
+| `CONVERSATION_TTL_MINUTES` | Memory duration | `30` |
+| `MAX_RESPONSE_LENGTH` | Max response chars | `4000` |
 
-- **In Groups**: Mention the bot (e.g., `@YourBotName What is the meaning of life?`).
-- **Summarizing**: Reply to a long message and mention the bot with "Summarize this".
-- **Explaining**: Reply to a complex message and mention the bot with "Explain this simply".
-- **Private Chat**: Just send a message directly to the bot.
+## Commands
+
+- `/start` - Initialize the bot
+- `/help` - Show usage info
+- `/clear` - Clear conversation memory
+- `/ping` - Health check
+
+## Project Structure
+
+```
+├── index.js          # Entry point
+├── src/
+│   ├── bot.js        # Telegram handlers
+│   ├── ai.js         # OpenRouter integration
+│   ├── memory.js     # Conversation history
+│   ├── config.js     # Configuration
+│   ├── logger.js     # Structured logging
+│   ├── server.js     # Health check server
+│   └── utils.js      # Utility functions
+├── test.js           # Test suite
+└── .env.example      # Config template
+```
+
+## Deployment (Render/Railway)
+
+1. Push to GitHub
+2. Connect repo to hosting platform
+3. Set environment variables:
+   - `TELEGRAM_BOT_TOKEN`
+   - `OPENROUTER_API_KEY`
+   - `WEBHOOK_DOMAIN` (your app URL)
+4. Deploy!
+
+## Testing
+
+```bash
+npm test              # Run tests with default model
+npm run test:deepseek # Test with DeepSeek model
+```
+
+## License
+
+MIT
