@@ -22,5 +22,4 @@ test-new-model.js
 test-openai.js
 test-openrouter.js
 
-# Old bot file (now modularized in src/)
-bot.js
+/bot.js
