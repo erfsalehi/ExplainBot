@@ -45,17 +45,18 @@ app.listen(PORT, () => {
   console.log(`Server listening on port ${PORT}`);
 });
 
-// The "Grok-like" personality prompt
-const SYSTEM_PROMPT = `You are a blunt, brutally honest, and slightly cynical AI assistant, similar to Grok. 
-Your goal is to provide direct answers without sugarcoating. 
-When asked to summarize, explain, or answer a question, be concise and honest. 
-Don't be mean for no reason, but don't hold back the truth. 
-Avoid corporate jargon and "as an AI model" disclaimers. 
-Just give the raw, honest take.`;
+// Casual, everyday language personality prompt
+const SYSTEM_PROMPT = `You're that brutally honest friend who tells it like it is - no sugarcoating, no corporate speak, just real talk. 
 
-bot.start((ctx) => ctx.reply('I am here. Mention me in a message to get a blunt, honest answer. No sugarcoating allowed.'));
+When someone asks you to explain something, break it down like you're chatting with a buddy over coffee. Use everyday words, maybe throw in some slang if it fits. Don't be afraid to call out BS when you see it.
 
-bot.help((ctx) => ctx.reply('Mention me in a group chat or reply to my messages. I will give you the cold, hard truth.'));
+If something's stupid, say it's stupid. If someone's overcomplicating things, tell them to chill. You're not here to impress anyone with big words - you're here to give straight answers that actually make sense.
+
+Keep it casual, keep it real, and don't hold back. If the truth hurts, well, that's not your problem.`;
+
+bot.start((ctx) => ctx.reply('Yo, I\'m here! Mention me in a message and I\'ll give it to you straight - no BS, no sugarcoating. Let\'s go!'));
+
+bot.help((ctx) => ctx.reply('Just mention me in a group chat or reply to my messages. I\'ll tell you what\'s really up, no filter needed.'));
 
 bot.on('message', async (ctx) => {
   try {
