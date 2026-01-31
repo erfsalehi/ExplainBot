@@ -1,26 +1,40 @@
 import { Telegraf } from 'telegraf';
-import { OpenRouter } from "@openrouter/sdk";
+import OpenAI from "openai";
 import { HttpsProxyAgent } from 'https-proxy-agent';
 import express from 'express';
 import 'dotenv/config';
 
-if (!process.env.TELEGRAM_BOT_TOKEN || !process.env.OPENROUTER_API_KEY) {
+// Trim keys to avoid whitespace issues
+const TG_TOKEN = process.env.TELEGRAM_BOT_TOKEN?.trim();
+const OR_KEY = process.env.OPENROUTER_API_KEY?.trim();
+
+if (!TG_TOKEN || !OR_KEY) {
   console.error('Error: TELEGRAM_BOT_TOKEN and OPENROUTER_API_KEY must be set in .env');
   process.exit(1);
 }
 
-// Proxy support
+// Proxy support (only for Telegram)
 const proxy = process.env.HTTPS_PROXY || process.env.HTTP_PROXY;
 let agent;
 if (proxy) {
-  console.log(`Using proxy: ${proxy}`);
+  console.log(`Using proxy for Telegram: ${proxy}`);
   agent = new HttpsProxyAgent(proxy);
 }
 
-const bot = new Telegraf(process.env.TELEGRAM_BOT_TOKEN, {
+const bot = new Telegraf(TG_TOKEN, {
   telegram: {
     agent: agent,
     apiRoot: process.env.TELEGRAM_API_ROOT || 'https://api.telegram.org'
+  }
+});
+
+// OpenAI client configured for OpenRouter
+const openai = new OpenAI({
+  baseURL: "https://openrouter.ai/api/v1",
+  apiKey: OR_KEY,
+  defaultHeaders: {
+    "HTTP-Referer": "https://github.com/erfsalehi/ExplainBot",
+    "X-Title": "Blunt Explain Bot",
   }
 });
 
@@ -35,15 +49,6 @@ app.get('/health', (req, res) => res.status(200).send('OK'));
 // Start Express server regardless of mode so Render is happy
 app.listen(PORT, () => {
   console.log(`Server listening on port ${PORT}`);
-});
-
-const openrouter = new OpenRouter({
-  apiKey: process.env.OPENROUTER_API_KEY,
-  // Optional headers for OpenRouter
-  headers: {
-    "HTTP-Referer": "https://github.com/erfsalehi/ExplainBot", // Optional, for including your app on openrouter.ai rankings.
-    "X-Title": "Blunt Explain Bot", // Optional. Shows in rankings on openrouter.ai.
-  }
 });
 
 // The "Grok-like" personality prompt
@@ -87,8 +92,8 @@ bot.on('message', async (ctx) => {
         { role: "user", content: `${userQuery}${contextMessage}` }
       ];
 
-      const stream = await openrouter.chat.send({
-        model: "deepseek/deepseek-r1:free", // Using the more reliable free model name
+      const stream = await openai.chat.completions.create({
+        model: "deepseek/deepseek-r1:free",
         messages: messages,
         stream: true
       });
@@ -109,8 +114,8 @@ bot.on('message', async (ctx) => {
             break; 
           }
 
-          // Update message every 2 seconds to avoid rate limits
-          if (Date.now() - lastUpdate > 2000 && fullResponse.trim()) {
+          // Update message every 2.5 seconds to avoid rate limits
+          if (Date.now() - lastUpdate > 2500 && fullResponse.trim()) {
             try {
               await ctx.telegram.editMessageText(
                 ctx.chat.id,
