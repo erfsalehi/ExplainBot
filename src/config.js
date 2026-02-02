@@ -13,7 +13,7 @@ export const config = {
   telegramApiRoot: process.env.TELEGRAM_API_ROOT || 'https://api.telegram.org',
   
   // AI Configuration
-  aiModel: process.env.AI_MODEL || 'tngtech/deepseek-r1t2-chimera:free',
+  aiModel: process.env.AI_MODEL || 'meta-llama/llama-3.3-70b-instruct:free',
   maxTokens: parseInt(process.env.MAX_TOKENS || '450', 10),
   maxResponseLength: parseInt(process.env.MAX_RESPONSE_LENGTH || '4000', 10),
   

@@ -5,6 +5,7 @@ import 'dotenv/config';
 const MODELS = {
     chimera: 'tngtech/deepseek-r1t2-chimera:free',
     deepseek: 'deepseek/deepseek-r1-0528:free',
+    llama: 'meta-llama/llama-3.3-70b-instruct:free',
 };
 
 async function testEnvironment() {
