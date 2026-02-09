@@ -43,7 +43,7 @@ app.listen(PORT, () => {
   console.log(`Server listening on port ${PORT}`);
 });
 
-const SYSTEM_PROMPT = `You're that brutally honest friend who tells it like it is - no sugarcoating, no corporate speak, just real talk with a heavy dose of sarcasm and humor.
+const SYSTEM_PROMPT = `Your name is Usibot. You're that brutally honest friend who tells it like it is - no sugarcoating, no corporate speak, just real talk with a heavy dose of sarcasm and humor.
 
 When someone asks you to explain something, break it down like you're chatting with a buddy over coffee, but don't hesitate to roast them if the question is dumb. Use everyday words, throw in some slang, and definitely call out BS when you see it.
 
@@ -55,9 +55,9 @@ Language rule: ONLY reply in English or Persian (Farsi). No other languages. If 
 
 If the user's message is mostly Persian (Farsi), reply in Persian. Otherwise reply in English.`;
 
-bot.start((ctx) => ctx.reply('Yo, I\'m here! Mention me in a message and I\'ll give it to you straight - no BS, no sugarcoating. Let\'s go!'));
+bot.start((ctx) => ctx.reply('Yo, Usibot is here! Mention me in a message and I\'ll give it to you straight - no BS, no sugarcoating. Let\'s go!'));
 
-bot.help((ctx) => ctx.reply('Just mention me in a group chat or reply to my messages. I\'ll tell you what\'s really up, no filter needed.'));
+bot.help((ctx) => ctx.reply('Just mention me in a group chat or reply to my messages. I\'m Usibot, and I\'ll tell you what\'s really up, no filter needed.'));
 
 bot.command('ping', (ctx) => ctx.reply('pong'));
 
@@ -72,24 +72,31 @@ function normalizeForMention(str) {
 }
 
 async function ensureBotInfo(ctx) {
-  if (BOT_USERNAME && (bot.botInfo?.username || bot.context?.botInfo?.username)) return;
+  if (BOT_USERNAME && BOT_ID) return;
   try {
     const botInfo = await bot.telegram.getMe();
-    BOT_USERNAME = BOT_USERNAME || botInfo.username || '';
-    BOT_ID = botInfo.id || BOT_ID;
+    BOT_USERNAME = botInfo.username || BOT_USERNAME;
+    BOT_ID = botInfo.id;
     bot.botInfo = botInfo;
-    bot.context.botInfo = botInfo;
   } catch (err) {
-    if (!BOT_USERNAME && ctx?.botInfo?.username) BOT_USERNAME = ctx.botInfo.username;
-    if (!BOT_ID && ctx?.botInfo?.id) BOT_ID = ctx.botInfo.id;
+    console.error('Error fetching bot info:', err);
   }
 }
 
 function isMentionedInText(text, username) {
-  if (!text || !username) return false;
+  if (!text) return false;
   const t = normalizeForMention(text).toLowerCase();
-  const u = normalizeForMention(username).toLowerCase();
-  return t.includes(`@${u}`);
+  
+  // Check for @username
+  if (username) {
+    const u = normalizeForMention(username).toLowerCase();
+    const mentionRegex = new RegExp(`@${escapeRegExp(u)}(?:$|[^a-z0-9_])`, 'i');
+    if (mentionRegex.test(t)) return true;
+  }
+  
+  // Check for the name "Usibot"
+  const nameRegex = /\busibot\b/i;
+  return nameRegex.test(t);
 }
 
 function stripMention(text, username) {
@@ -147,7 +154,7 @@ async function handleIncoming(ctx, message) {
       ];
 
       const stream = await openrouter.chat.send({
-        model: "tngtech/tng-r1t-chimera:free",
+        model: "tngtech/deepseek-r1t2-chimera:free",
         messages: messages,
         stream: true
       });
