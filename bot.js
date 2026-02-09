@@ -147,7 +147,7 @@ async function handleIncoming(ctx, message) {
       ];
 
       const stream = await openrouter.chat.send({
-        model: "nvidia/nemotron-3-nano-30b-a3b:free",
+        model: "tngtech/tng-r1t-chimera:free",
         messages: messages,
         stream: true
       });
@@ -179,11 +179,6 @@ async function handleIncoming(ctx, message) {
             } catch (e) {
             }
           }
-        }
-
-        // Usage information comes in the final chunk
-        if (chunk.usage) {
-          console.log('\nReasoning tokens:', chunk.usage.reasoningTokens);
         }
       }
 
